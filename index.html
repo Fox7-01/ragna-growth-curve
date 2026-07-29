@@ -1,0 +1,635 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>負けて、負けて…負けて、勝って ― 成長の心理学</title>
+<meta name="description" content="『負けて、負けて…負けて、勝って』というパターンが繰り返され、負けの連続が短く、勝ちの連続が長くなっていく――学習曲線の心理学を可視化したインタラクティブアニメーション。">
+<style>
+  :root{
+    --bg: #08080c;
+    --bg-2: #0e0e16;
+    --panel: #14141e;
+    --panel-2: #1a1a26;
+    --text: #e8e8ee;
+    --text-dim: #9a9aab;
+    --lose: #8a8a9a;
+    --lose-glow: rgba(220, 60, 60, 0.35);
+    --win: #ffd166;
+    --win-2: #ff8a3d;
+    --win-glow: rgba(255, 160, 60, 0.55);
+    --accent: #ff8a3d;
+    --border: rgba(255,255,255,0.08);
+  }
+
+  *{ box-sizing: border-box; margin:0; padding:0; }
+
+  html{ scroll-behavior: smooth; }
+
+  body{
+    background: radial-gradient(ellipse at 50% -10%, #17131e 0%, var(--bg) 55%), var(--bg);
+    color: var(--text);
+    font-family: "Hiragino Sans", "Yu Gothic", "Noto Sans JP", -apple-system, BlinkMacSystemFont, sans-serif;
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+
+  /* ---------- HERO / STAGE ---------- */
+  .hero{
+    position: relative;
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 6vh 5vw 4vh;
+    overflow: hidden;
+  }
+
+  .hero::before{
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(circle at 50% 30%, rgba(255,138,61,0.08), transparent 60%);
+    pointer-events: none;
+  }
+
+  .eyebrow{
+    font-size: clamp(11px, 1.6vw, 13px);
+    letter-spacing: 0.25em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 1.2rem;
+    opacity: 0.8;
+    text-align: center;
+  }
+
+  #stage{
+    position: relative;
+    width: 100%;
+    max-width: 720px;
+    height: clamp(160px, 28vh, 260px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #particles{
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: visible;
+  }
+
+  .spark{
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--win);
+    box-shadow: 0 0 8px 2px var(--win-glow);
+    animation: spark-fly var(--sdur, 0.9s) ease-out forwards;
+    opacity: 0;
+  }
+
+  @keyframes spark-fly{
+    0%{ opacity: 1; transform: translate(-50%,-50%) translate(0,0) scale(1); }
+    100%{ opacity: 0; transform: translate(-50%,-50%) translate(var(--dx), var(--dy)) scale(0.3); }
+  }
+
+  #bigText{
+    font-weight: 900;
+    font-size: clamp(3.4rem, 15vw, 9rem);
+    line-height: 1;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    will-change: transform, opacity;
+    user-select: none;
+  }
+
+  #bigText.lose{
+    color: var(--lose);
+    text-shadow: 0 0 24px var(--lose-glow), 0 4px 18px rgba(0,0,0,0.6);
+    animation-name: sinkIn;
+    animation-fill-mode: forwards;
+    animation-timing-function: cubic-bezier(.5,0,.75,0);
+  }
+
+  #bigText.win{
+    color: var(--win);
+    background: linear-gradient(180deg, #fff3cf 0%, var(--win) 45%, var(--win-2) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 20px var(--win-glow)) drop-shadow(0 0 46px rgba(255,138,61,0.35));
+    animation-name: burstIn;
+    animation-fill-mode: forwards;
+    animation-timing-function: cubic-bezier(.34,1.56,.64,1);
+  }
+
+  @keyframes sinkIn{
+    0%{ opacity: 0; transform: translateY(-26px) scale(0.92); }
+    30%{ opacity: 1; transform: translateY(0) scale(1); }
+    100%{ opacity: 0.22; transform: translateY(22px) scale(0.94); }
+  }
+
+  @keyframes burstIn{
+    0%{ opacity: 0; transform: scale(0.45) rotate(-4deg); }
+    45%{ opacity: 1; transform: scale(1.18) rotate(2deg); }
+    72%{ transform: scale(0.97) rotate(-0.5deg); }
+    100%{ opacity: 1; transform: scale(1) rotate(0deg); }
+  }
+
+  #streakLabel{
+    margin-top: 0.6rem;
+    font-size: clamp(0.85rem, 2.4vw, 1.05rem);
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+    min-height: 1.4em;
+    text-align: center;
+  }
+  #streakLabel .n{ color: var(--text); font-weight: 700; }
+
+  /* ---------- STATS PANEL ---------- */
+  #stats{
+    width: 100%;
+    max-width: 640px;
+    margin-top: clamp(1.6rem, 4vh, 3rem);
+    background: linear-gradient(180deg, var(--panel), var(--panel-2));
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.1rem 1.3rem 0.9rem;
+  }
+
+  .stat-row{
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    margin-bottom: 0.6rem;
+    flex-wrap: wrap;
+  }
+
+  .stat-item{
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+
+  .stat-label{
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+  }
+
+  .stat-value{
+    font-size: 1.4rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+
+  #loseCount{ color: var(--lose); }
+  #winRate{ color: var(--win); }
+
+  #chart{
+    width: 100%;
+    height: 110px;
+    display: block;
+  }
+
+  /* ---------- CONTROLS ---------- */
+  .controls{
+    margin-top: 1.6rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.9rem;
+  }
+
+  #replayBtn{
+    appearance: none;
+    border: 1px solid rgba(255,209,102,0.4);
+    background: linear-gradient(180deg, rgba(255,209,102,0.14), rgba(255,138,61,0.08));
+    color: var(--win);
+    font-weight: 700;
+    font-size: 0.95rem;
+    letter-spacing: 0.04em;
+    padding: 0.75rem 1.8rem;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+    box-shadow: 0 0 0 rgba(255,138,61,0);
+  }
+  #replayBtn:hover:not(:disabled){
+    transform: translateY(-2px);
+    box-shadow: 0 6px 22px rgba(255,138,61,0.25);
+  }
+  #replayBtn:disabled{
+    opacity: 0.45;
+    cursor: default;
+  }
+
+  .scroll-hint{
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    opacity: 0.7;
+    animation: bob 2.2s ease-in-out infinite;
+  }
+
+  @keyframes bob{
+    0%,100%{ transform: translateY(0); opacity: 0.5; }
+    50%{ transform: translateY(6px); opacity: 0.9; }
+  }
+
+  /* ---------- CARDS SECTION ---------- */
+  #cards{
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 8vh 6vw 12vh;
+  }
+
+  #cards h2{
+    text-align: center;
+    font-size: clamp(1.3rem, 3vw, 1.8rem);
+    font-weight: 800;
+    margin-bottom: 0.6rem;
+    color: var(--text);
+  }
+
+  #cards .sub{
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 0.9rem;
+    margin-bottom: 4rem;
+    line-height: 1.7;
+  }
+
+  .card{
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.8rem 1.9rem;
+    margin-bottom: 1.4rem;
+    opacity: 0;
+    transform: translateY(28px);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+  }
+
+  .card.visible{
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .card .num{
+    font-size: 0.78rem;
+    color: var(--accent);
+    letter-spacing: 0.12em;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+
+  .card h3{
+    font-size: clamp(1.05rem, 2.4vw, 1.25rem);
+    font-weight: 700;
+    margin-bottom: 0.7rem;
+    color: var(--text);
+  }
+
+  .card p{
+    font-size: 0.95rem;
+    line-height: 1.85;
+    color: var(--text-dim);
+  }
+
+  footer{
+    text-align: center;
+    padding: 3rem 1rem 4rem;
+    color: var(--text-dim);
+    font-size: 0.78rem;
+    opacity: 0.6;
+  }
+
+  @media (max-width: 480px){
+    #stats{ padding: 1rem 1rem 0.8rem; }
+    .card{ padding: 1.4rem 1.3rem; }
+  }
+</style>
+</head>
+<body>
+
+<section class="hero">
+  <div class="eyebrow">RAGNA CRIMSON — EP.1 より</div>
+  <div id="stage">
+    <div id="particles"></div>
+    <div id="bigText"></div>
+  </div>
+  <div id="streakLabel"></div>
+
+  <div id="stats">
+    <div class="stat-row">
+      <div class="stat-item">
+        <span class="stat-label">敗北カウント</span>
+        <span class="stat-value" id="loseCount">0</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">勝率</span>
+        <span class="stat-value" id="winRate">0%</span>
+      </div>
+    </div>
+    <canvas id="chart"></canvas>
+  </div>
+
+  <div class="controls">
+    <button id="replayBtn">もう一度再生</button>
+    <div class="scroll-hint">▼ スクロールして続きを見る</div>
+  </div>
+</section>
+
+<section id="cards">
+  <h2>なぜ「負けて、負けて…負けて、勝って」なのか</h2>
+  <p class="sub">負けの連続が短くなり、勝ちの連続が長くなっていく――このパターンは物語の演出であると同時に、実際の人間心理学が示す成長プロセスとも一致する。</p>
+
+  <div class="card">
+    <div class="num">01</div>
+    <h3>学習曲線のS字カーブ</h3>
+    <p>スキル習得は直線的には進まない。最初は成果がほとんど見えない「プラトー(停滞期)」が長く続き、基礎的な神経回路や理解が閾値を超えた瞬間に急上昇が始まる。序盤の負けの連続は、成果が見えないだけで実は土台が積み上がっている時間にあたる。</p>
+  </div>
+
+  <div class="card">
+    <div class="num">02</div>
+    <h3>意図的練習による失敗の質的転化</h3>
+    <p>同じ失敗を繰り返しているように見えても、注意深く取り組む「意図的練習(Deliberate Practice)」の下では、一回一回の負けが持つ情報の質が変わっていく。原因が特定され修正されるたびに、次の負けはより「勝ちに近い負け」になる。</p>
+  </div>
+
+  <div class="card">
+    <div class="num">03</div>
+    <h3>自己効力感の逆説</h3>
+    <p>心理学者バンデューラが示したように、自己効力感(自分はできるという感覚)は成功体験だけでなく、失敗を乗り越えた経験からも強く育つ。何度も負けてなお挑み続けたという事実そのものが、次の一勝を支える心理的土台になる。</p>
+  </div>
+
+  <div class="card">
+    <div class="num">04</div>
+    <h3>感情の馴化による認知資源の解放</h3>
+    <p>負けた直後は不安や焦りに認知資源を奪われるが、同じ種類の失敗に繰り返し晒されることで感情反応は徐々に馴化(慣れ)していく。動揺が小さくなるほど、状況分析や意思決定に使える余力が増え、判断の質そのものが上がっていく。</p>
+  </div>
+
+  <div class="card">
+    <div class="num">05</div>
+    <h3>成長マインドセット</h3>
+    <p>心理学者キャロル・ドゥエックの研究によれば、能力を「伸ばせるもの」と捉える成長マインドセットを持つ人ほど、失敗を「自分の限界の証明」ではなく「次に活かす情報」として処理できる。負けの数がそのまま実力への評価にならないという前提が、粘り強さを可能にする。</p>
+  </div>
+</section>
+
+<footer>負けて、負けて…負けて、勝って。</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---- sequence definition ----
+  // [count, type] groups per spec: 負×8→勝×1, 負×6→勝×1, 負×4→勝×1, 負×2→勝×1, 負×1→勝×1, 勝×5連続
+  var GROUPS = [
+    [8,'lose'],[1,'win'],
+    [6,'lose'],[1,'win'],
+    [4,'lose'],[1,'win'],
+    [2,'lose'],[1,'win'],
+    [1,'lose'],[1,'win'],
+    [5,'win']
+  ];
+
+  function buildSequence(){
+    var arr = [];
+    GROUPS.forEach(function(g){
+      for (var i=0;i<g[0];i++) arr.push(g[1]);
+    });
+    return arr;
+  }
+
+  var SEQUENCE = buildSequence();
+  var TOTAL = SEQUENCE.length;
+
+  var bigText = document.getElementById('bigText');
+  var streakLabel = document.getElementById('streakLabel');
+  var loseCountEl = document.getElementById('loseCount');
+  var winRateEl = document.getElementById('winRate');
+  var replayBtn = document.getElementById('replayBtn');
+  var particlesEl = document.getElementById('particles');
+  var canvas = document.getElementById('chart');
+  var ctx = canvas.getContext('2d');
+
+  var playing = false;
+  var timer = null;
+  var history = []; // winrate history 0..100
+
+  var START_DELAY = 780;
+  var MIN_DELAY = 150;
+
+  function delayFor(index){
+    var progress = TOTAL <= 1 ? 1 : index/(TOTAL-1);
+    var eased = progress*progress; // accelerate toward the end
+    return START_DELAY - (START_DELAY-MIN_DELAY)*eased;
+  }
+
+  function resizeCanvas(){
+    var rect = canvas.getBoundingClientRect();
+    var dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.max(1, Math.round(rect.width*dpr));
+    canvas.height = Math.max(1, Math.round(rect.height*dpr));
+    drawChart();
+  }
+
+  function drawChart(){
+    var w = canvas.width, h = canvas.height;
+    ctx.clearRect(0,0,w,h);
+    var pad = 6*(window.devicePixelRatio||1);
+
+    // baseline grid
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 1;
+    for (var g=0; g<=2; g++){
+      var gy = pad + (h-2*pad)*(g/2);
+      ctx.beginPath();
+      ctx.moveTo(pad, gy);
+      ctx.lineTo(w-pad, gy);
+      ctx.stroke();
+    }
+
+    if (history.length < 1) return;
+
+    var n = Math.max(history.length-1, 1);
+    function pt(i){
+      var x = pad + (w-2*pad) * (history.length===1 ? 1 : i/n);
+      var v = history[i]/100;
+      var y = h - pad - (h-2*pad)*v;
+      return [x,y];
+    }
+
+    // area fill
+    ctx.beginPath();
+    var p0 = pt(0);
+    ctx.moveTo(p0[0], h-pad);
+    ctx.lineTo(p0[0], p0[1]);
+    for (var i=1;i<history.length;i++){
+      var p = pt(i);
+      ctx.lineTo(p[0], p[1]);
+    }
+    var last = pt(history.length-1);
+    ctx.lineTo(last[0], h-pad);
+    ctx.closePath();
+    var grad = ctx.createLinearGradient(0,0,0,h);
+    grad.addColorStop(0,'rgba(255,209,102,0.35)');
+    grad.addColorStop(1,'rgba(255,138,61,0.02)');
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // line
+    ctx.beginPath();
+    for (var j=0;j<history.length;j++){
+      var pj = pt(j);
+      if (j===0) ctx.moveTo(pj[0], pj[1]);
+      else ctx.lineTo(pj[0], pj[1]);
+    }
+    ctx.strokeStyle = '#ffd166';
+    ctx.lineWidth = 2.5*(window.devicePixelRatio||1);
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.shadowColor = 'rgba(255,160,60,0.6)';
+    ctx.shadowBlur = 8*(window.devicePixelRatio||1);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // last point dot
+    ctx.beginPath();
+    ctx.arc(last[0], last[1], 3.5*(window.devicePixelRatio||1), 0, Math.PI*2);
+    ctx.fillStyle = '#fff3cf';
+    ctx.fill();
+  }
+
+  function spawnParticles(count){
+    for (var i=0;i<count;i++){
+      var el = document.createElement('div');
+      el.className = 'spark';
+      var angle = Math.random()*Math.PI*2;
+      var dist = 60 + Math.random()*90;
+      var dx = Math.cos(angle)*dist;
+      var dy = Math.sin(angle)*dist;
+      var dur = 0.6 + Math.random()*0.5;
+      el.style.setProperty('--dx', dx.toFixed(1)+'px');
+      el.style.setProperty('--dy', dy.toFixed(1)+'px');
+      el.style.setProperty('--sdur', dur.toFixed(2)+'s');
+      el.style.background = Math.random() > 0.5 ? '#ffd166' : '#ff8a3d';
+      particlesEl.appendChild(el);
+      (function(node, ms){
+        setTimeout(function(){ node.remove(); }, ms*1000 + 50);
+      })(el, dur);
+    }
+  }
+
+  function reset(){
+    history = [0];
+    loseCountEl.textContent = '0';
+    winRateEl.textContent = '0%';
+    streakLabel.textContent = '';
+    bigText.className = '';
+    bigText.textContent = '';
+    drawChart();
+  }
+
+  function play(){
+    if (playing) return;
+    playing = true;
+    replayBtn.disabled = true;
+    replayBtn.textContent = '再生中…';
+    reset();
+
+    var losses = 0, wins = 0;
+    var curType = null, curStreak = 0;
+    var index = 0;
+
+    function step(){
+      if (index >= TOTAL){
+        playing = false;
+        replayBtn.disabled = false;
+        replayBtn.textContent = 'もう一度再生';
+        return;
+      }
+
+      var type = SEQUENCE[index];
+      if (type === curType){ curStreak++; } else { curType = type; curStreak = 1; }
+
+      if (type === 'lose'){ losses++; } else { wins++; }
+
+      var total = losses + wins;
+      var rate = total > 0 ? (wins/total*100) : 0;
+      history.push(rate);
+
+      loseCountEl.textContent = String(losses);
+      winRateEl.textContent = rate.toFixed(0) + '%';
+      streakLabel.innerHTML = type === 'lose'
+        ? '<span class="n">' + curStreak + '</span> 連敗中…'
+        : '<span class="n">' + curStreak + '</span> 連勝中！';
+
+      var delay = delayFor(index);
+      var dur = Math.max(0.28, Math.min(0.85, delay/1000*0.95));
+
+      bigText.style.setProperty('animation-duration', dur.toFixed(2)+'s');
+      bigText.className = type;
+      // restart animation
+      void bigText.offsetWidth;
+      bigText.className = type;
+      bigText.textContent = type === 'lose' ? '負け' : '勝て';
+
+      if (type === 'win') spawnParticles(10);
+
+      drawChart();
+
+      index++;
+      timer = setTimeout(step, delay);
+    }
+
+    step();
+  }
+
+  replayBtn.addEventListener('click', function(){
+    if (timer) clearTimeout(timer);
+    playing = false;
+    play();
+  });
+
+  window.addEventListener('resize', resizeCanvas);
+
+  // ---- scroll fade-in for cards ----
+  var cards = document.querySelectorAll('.card');
+  if ('IntersectionObserver' in window){
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        if (entry.isIntersecting){
+          entry.target.classList.add('visible');
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.15, rootMargin: '0px 0px -60px 0px' });
+    cards.forEach(function(c){ io.observe(c); });
+  } else {
+    cards.forEach(function(c){ c.classList.add('visible'); });
+  }
+
+  // ---- init ----
+  resizeCanvas();
+  reset();
+  window.addEventListener('load', function(){
+    setTimeout(play, 500);
+  });
+  // fallback in case 'load' already fired
+  if (document.readyState === 'complete'){
+    setTimeout(play, 500);
+  }
+})();
+</script>
+
+</body>
+</html>
