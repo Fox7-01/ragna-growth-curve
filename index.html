@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>負けて、負けて…負けて、勝って ― 成長の心理学</title>
-<meta name="description" content="『負けて、負けて…負けて、勝って』というパターンが繰り返され、負けの連続が短く、勝ちの連続が長くなっていく――学習曲線の心理学を可視化したインタラクティブアニメーション。">
+<meta name="description" content="学習曲線研究に基づくロジスティック(S字)モデルで100試行の勝敗をシミュレーションし、負けの連続が短く勝ちの連続が長くなっていく成長プロセスを可視化したインタラクティブアニメーション。">
 <style>
   :root{
     --bg: #08080c;
@@ -64,6 +64,16 @@
     opacity: 0.8;
     text-align: center;
   }
+
+  #trialCounter{
+    font-size: clamp(0.7rem, 1.8vw, 0.82rem);
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+    margin-bottom: 0.6rem;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.85;
+  }
+  #trialCounter .now{ color: var(--win); font-weight: 700; }
 
   #stage{
     position: relative;
@@ -169,7 +179,7 @@
     justify-content: space-between;
     align-items: baseline;
     gap: 1rem;
-    margin-bottom: 0.6rem;
+    margin-bottom: 0.5rem;
     flex-wrap: wrap;
   }
 
@@ -194,10 +204,80 @@
   #loseCount{ color: var(--lose); }
   #winRate{ color: var(--win); }
 
+  .stat-row.secondary{
+    margin-bottom: 0.7rem;
+  }
+  .stat-row.secondary .stat-value{
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-dim);
+  }
+  #theoryRate{ color: #c9c9d6; }
+
+  .chart-legend{
+    display: flex;
+    gap: 1.2rem;
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    margin-bottom: 0.4rem;
+    letter-spacing: 0.03em;
+  }
+  .chart-legend span{ display:flex; align-items:center; gap:0.35rem; }
+  .swatch{ display:inline-block; width:14px; height:3px; border-radius:2px; }
+  .swatch.actual{ background: var(--win); box-shadow: 0 0 6px var(--win-glow); }
+  .swatch.theory{ background: repeating-linear-gradient(90deg, #8f8fa3 0 4px, transparent 4px 8px); }
+
   #chart{
     width: 100%;
-    height: 110px;
+    height: 130px;
     display: block;
+  }
+
+  details.model-info{
+    margin-top: 0.9rem;
+    border-top: 1px solid var(--border);
+    padding-top: 0.7rem;
+  }
+  details.model-info summary{
+    cursor: pointer;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    letter-spacing: 0.03em;
+    list-style: none;
+  }
+  details.model-info summary::-webkit-details-marker{ display:none; }
+  details.model-info summary::before{
+    content: "▸ ";
+    color: var(--accent);
+  }
+  details.model-info[open] summary::before{
+    content: "▾ ";
+  }
+  .model-info .body{
+    margin-top: 0.7rem;
+    font-size: 0.78rem;
+    line-height: 1.9;
+    color: var(--text-dim);
+  }
+  .model-info .formula{
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.75rem;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.6rem 0.8rem;
+    margin: 0.5rem 0;
+    color: #d8d8e2;
+    overflow-x: auto;
+    white-space: pre;
+  }
+  .model-info ul{ margin: 0.4rem 0 0.6rem 1.1rem; }
+  .model-info .note{
+    margin-top: 0.6rem;
+    padding: 0.6rem 0.8rem;
+    border-left: 2px solid var(--accent);
+    background: rgba(255,138,61,0.06);
+    color: var(--text-dim);
   }
 
   /* ---------- CONTROLS ---------- */
@@ -249,7 +329,7 @@
   #cards{
     max-width: 900px;
     margin: 0 auto;
-    padding: 8vh 6vw 12vh;
+    padding: 8vh 6vw 6vh;
   }
 
   #cards h2{
@@ -305,6 +385,33 @@
     color: var(--text-dim);
   }
 
+  .card .cite{
+    margin-top: 0.9rem;
+    padding-top: 0.7rem;
+    border-top: 1px dashed var(--border);
+    font-size: 0.78rem;
+    line-height: 1.7;
+    color: #7d7d8c;
+  }
+
+  #references{
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 6vw 10vh;
+  }
+  #references h2{
+    font-size: 1rem;
+    color: var(--text-dim);
+    margin-bottom: 1rem;
+    letter-spacing: 0.08em;
+  }
+  #references ol{
+    padding-left: 1.2rem;
+    color: var(--text-dim);
+    font-size: 0.82rem;
+    line-height: 2.1;
+  }
+
   footer{
     text-align: center;
     padding: 3rem 1rem 4rem;
@@ -323,6 +430,7 @@
 
 <section class="hero">
   <div class="eyebrow">RAGNA CRIMSON — EP.1 より</div>
+  <div id="trialCounter">試行 <span class="now" id="trialNow">0</span> / <span id="trialTotal">100</span></div>
   <div id="stage">
     <div id="particles"></div>
     <div id="bigText"></div>
@@ -336,11 +444,42 @@
         <span class="stat-value" id="loseCount">0</span>
       </div>
       <div class="stat-item">
-        <span class="stat-label">勝率</span>
+        <span class="stat-label">勝率(実測)</span>
         <span class="stat-value" id="winRate">0%</span>
       </div>
     </div>
+    <div class="stat-row secondary">
+      <div class="stat-item">
+        <span class="stat-label">モデル理論値</span>
+        <span class="stat-value" id="theoryRate">0%</span>
+      </div>
+    </div>
+    <div class="chart-legend">
+      <span><i class="swatch actual"></i>実測(乱数シミュレーション)</span>
+      <span><i class="swatch theory"></i>理論曲線(モデル)</span>
+    </div>
     <canvas id="chart"></canvas>
+
+    <details class="model-info">
+      <summary>この曲線の根拠について</summary>
+      <div class="body">
+        各試行 n (1〜100) の勝率は、以下のロジスティック関数(S字曲線)に従う理論値を土台に、試行ごとにベルヌーイ試行(重み付き乱数)で勝敗を決めています。そのため再生するたびに具体的な勝敗パターンは変わりますが、「勝率が上がっていく形」自体は毎回共通です。
+        <div class="formula">P(n) = P_min + (P_max − P_min) / (1 + e^(−k(n − n0)))
+
+P_min = 8%   (序盤の勝率、およそ10回に1回)
+P_max = 93%  (終盤の到達勝率)
+n0    = 55   (勝率が50%を超える転換点)
+k     = 0.10 (曲線の急峻さ)</div>
+        テキストが切り替わる速さも、練習を重ねるほど反応が速くなる「練習のべき乗則」に沿って短くしています。
+        <div class="formula">delay(n) = 100 + 360 × n^(−0.35)  [ms]</div>
+        <ul>
+          <li>S字型の学習曲線という関数の形: Thurstone (1919)</li>
+          <li>練習量に対する反応時間のべき乗則的短縮: Newell &amp; Rosenbloom (1981)</li>
+          <li>技能習得が「認知的→連合的→自動的」の3段階を辿ること: Fitts &amp; Posner (1967)</li>
+        </ul>
+        <div class="note">注記: P_min・P_max・n0・k などの具体的な数値は、上記の研究が示す「曲線の形状」を再現するために本作品用に選んだ例示的なパラメータであり、特定の実験データに直接フィットさせたものではありません。詳しい出典は下部の「参考文献」をご覧ください。</div>
+      </div>
+    </details>
   </div>
 
   <div class="controls">
@@ -356,32 +495,50 @@
   <div class="card">
     <div class="num">01</div>
     <h3>学習曲線のS字カーブ</h3>
-    <p>スキル習得は直線的には進まない。最初は成果がほとんど見えない「プラトー(停滞期)」が長く続き、基礎的な神経回路や理解が閾値を超えた瞬間に急上昇が始まる。序盤の負けの連続は、成果が見えないだけで実は土台が積み上がっている時間にあたる。</p>
+    <p>スキル習得は直線的には進まない。最初は成果がほとんど見えない「プラトー(停滞期)」が長く続き、基礎的な理解や身体感覚が閾値を超えた瞬間に急上昇が始まる。序盤の負けの連続は、成果が見えないだけで実は土台が積み上がっている時間にあたる。</p>
+    <p class="cite">出典: Thurstone, L. L. (1919). The Learning Curve Equation. <em>Psychological Monographs</em>, 26(3).</p>
   </div>
 
   <div class="card">
     <div class="num">02</div>
     <h3>意図的練習による失敗の質的転化</h3>
     <p>同じ失敗を繰り返しているように見えても、注意深く取り組む「意図的練習(Deliberate Practice)」の下では、一回一回の負けが持つ情報の質が変わっていく。原因が特定され修正されるたびに、次の負けはより「勝ちに近い負け」になる。</p>
+    <p class="cite">出典: Ericsson, K. A., Krampe, R. T., &amp; Tesch-Römer, C. (1993). The Role of Deliberate Practice in the Acquisition of Expert Performance. <em>Psychological Review</em>, 100(3), 363–406.</p>
   </div>
 
   <div class="card">
     <div class="num">03</div>
     <h3>自己効力感の逆説</h3>
-    <p>心理学者バンデューラが示したように、自己効力感(自分はできるという感覚)は成功体験だけでなく、失敗を乗り越えた経験からも強く育つ。何度も負けてなお挑み続けたという事実そのものが、次の一勝を支える心理的土台になる。</p>
+    <p>心理学者バンデューラが示したように、自己効力感(自分はできるという感覚)は成功体験だけでなく、困難を乗り越えた経験からも強く育つ。何度も負けてなお挑み続けたという事実そのものが、次の一勝を支える心理的土台になる。</p>
+    <p class="cite">出典: Bandura, A. (1977). Self-Efficacy: Toward a Unifying Theory of Behavioral Change. <em>Psychological Review</em>, 84(2), 191–215.</p>
   </div>
 
   <div class="card">
     <div class="num">04</div>
     <h3>感情の馴化による認知資源の解放</h3>
     <p>負けた直後は不安や焦りに認知資源を奪われるが、同じ種類の失敗に繰り返し晒されることで感情反応は徐々に馴化(慣れ)していく。動揺が小さくなるほど、状況分析や意思決定に使える余力が増え、判断の質そのものが上がっていく。</p>
+    <p class="cite">出典: Groves, P. M., &amp; Thompson, R. F. (1970). Habituation: A Dual-Process Theory. <em>Psychological Review</em>, 77(5), 419–450.</p>
   </div>
 
   <div class="card">
     <div class="num">05</div>
     <h3>成長マインドセット</h3>
-    <p>心理学者キャロル・ドゥエックの研究によれば、能力を「伸ばせるもの」と捉える成長マインドセットを持つ人ほど、失敗を「自分の限界の証明」ではなく「次に活かす情報」として処理できる。負けの数がそのまま実力への評価にならないという前提が、粘り強さを可能にする。</p>
+    <p>能力を「伸ばせるもの」と捉える成長マインドセットを持つ人ほど、失敗を「自分の限界の証明」ではなく「次に活かす情報」として処理できる。負けの数がそのまま実力への評価にならないという前提が、粘り強さを可能にする。</p>
+    <p class="cite">出典: Dweck, C. S., &amp; Leggett, E. L. (1988). A Social-Cognitive Approach to Motivation and Personality. <em>Psychological Review</em>, 95(2), 256–273.</p>
   </div>
+</section>
+
+<section id="references">
+  <h2>参考文献</h2>
+  <ol>
+    <li>Thurstone, L. L. (1919). The Learning Curve Equation. <em>Psychological Monographs</em>, 26(3), i–51.</li>
+    <li>Newell, A., &amp; Rosenbloom, P. S. (1981). Mechanisms of Skill Acquisition and the Law of Practice. In J. R. Anderson (Ed.), <em>Cognitive Skills and Their Acquisition</em> (pp. 1–55). Erlbaum.</li>
+    <li>Fitts, P. M., &amp; Posner, M. I. (1967). <em>Human Performance</em>. Brooks/Cole.</li>
+    <li>Ericsson, K. A., Krampe, R. T., &amp; Tesch-Römer, C. (1993). The Role of Deliberate Practice in the Acquisition of Expert Performance. <em>Psychological Review</em>, 100(3), 363–406.</li>
+    <li>Bandura, A. (1977). Self-Efficacy: Toward a Unifying Theory of Behavioral Change. <em>Psychological Review</em>, 84(2), 191–215.</li>
+    <li>Groves, P. M., &amp; Thompson, R. F. (1970). Habituation: A Dual-Process Theory. <em>Psychological Review</em>, 77(5), 419–450.</li>
+    <li>Dweck, C. S., &amp; Leggett, E. L. (1988). A Social-Cognitive Approach to Motivation and Personality. <em>Psychological Review</em>, 95(2), 256–273.</li>
+  </ol>
 </section>
 
 <footer>負けて、負けて…負けて、勝って。</footer>
@@ -390,49 +547,49 @@
 (function(){
   "use strict";
 
-  // ---- sequence definition ----
-  // [count, type] groups per spec: 負×8→勝×1, 負×6→勝×1, 負×4→勝×1, 負×2→勝×1, 負×1→勝×1, 勝×5連続
-  var GROUPS = [
-    [8,'lose'],[1,'win'],
-    [6,'lose'],[1,'win'],
-    [4,'lose'],[1,'win'],
-    [2,'lose'],[1,'win'],
-    [1,'lose'],[1,'win'],
-    [5,'win']
-  ];
+  // ---- learning-curve model ----
+  // Logistic (S-curve) win-probability model, functional form after Thurstone (1919).
+  var MODEL = { N: 100, P_MIN: 0.08, P_MAX: 0.93, N0: 55, K: 0.10 };
 
-  function buildSequence(){
-    var arr = [];
-    GROUPS.forEach(function(g){
-      for (var i=0;i<g[0];i++) arr.push(g[1]);
-    });
-    return arr;
+  function theoreticalP(n){
+    return MODEL.P_MIN + (MODEL.P_MAX - MODEL.P_MIN) / (1 + Math.exp(-MODEL.K * (n - MODEL.N0)));
   }
 
-  var SEQUENCE = buildSequence();
-  var TOTAL = SEQUENCE.length;
+  // Precompute the full theoretical curve (cumulative expected win rate) once — used as the static backdrop line.
+  var THEORY_POINT = [0];   // instantaneous P(n), index n
+  var THEORY_CUM = [0];     // cumulative average of P(1..n), index n
+  (function(){
+    var sum = 0;
+    for (var n=1; n<=MODEL.N; n++){
+      var p = theoreticalP(n);
+      THEORY_POINT.push(p);
+      sum += p;
+      THEORY_CUM.push(sum/n);
+    }
+  })();
+
+  // Power-law-of-practice timing: response/display speed shortens with trial count.
+  var DELAY_START = 460, DELAY_MIN = 100, DELAY_B = 0.35;
+  function delayFor(n){
+    return DELAY_MIN + (DELAY_START - DELAY_MIN) * Math.pow(n, -DELAY_B);
+  }
 
   var bigText = document.getElementById('bigText');
   var streakLabel = document.getElementById('streakLabel');
   var loseCountEl = document.getElementById('loseCount');
   var winRateEl = document.getElementById('winRate');
+  var theoryRateEl = document.getElementById('theoryRate');
+  var trialNowEl = document.getElementById('trialNow');
   var replayBtn = document.getElementById('replayBtn');
   var particlesEl = document.getElementById('particles');
   var canvas = document.getElementById('chart');
   var ctx = canvas.getContext('2d');
 
+  document.getElementById('trialTotal').textContent = String(MODEL.N);
+
   var playing = false;
   var timer = null;
-  var history = []; // winrate history 0..100
-
-  var START_DELAY = 780;
-  var MIN_DELAY = 150;
-
-  function delayFor(index){
-    var progress = TOTAL <= 1 ? 1 : index/(TOTAL-1);
-    var eased = progress*progress; // accelerate toward the end
-    return START_DELAY - (START_DELAY-MIN_DELAY)*eased;
-  }
+  var actualHistory = [0]; // cumulative actual win rate (%), index n
 
   function resizeCanvas(){
     var rect = canvas.getBoundingClientRect();
@@ -444,72 +601,89 @@
 
   function drawChart(){
     var w = canvas.width, h = canvas.height;
+    var dpr = window.devicePixelRatio || 1;
     ctx.clearRect(0,0,w,h);
-    var pad = 6*(window.devicePixelRatio||1);
+    var padX = 6*dpr, padY = 8*dpr;
 
-    // baseline grid
+    function xAt(n){ return padX + (w-2*padX) * (n/MODEL.N); }
+    function yAt(v){ return h - padY - (h-2*padY) * (v/100); }
+
+    // gridlines at 0/50/100
     ctx.strokeStyle = 'rgba(255,255,255,0.08)';
     ctx.lineWidth = 1;
-    for (var g=0; g<=2; g++){
-      var gy = pad + (h-2*pad)*(g/2);
+    [0,50,100].forEach(function(v){
+      var gy = yAt(v);
       ctx.beginPath();
-      ctx.moveTo(pad, gy);
-      ctx.lineTo(w-pad, gy);
+      ctx.moveTo(padX, gy);
+      ctx.lineTo(w-padX, gy);
       ctx.stroke();
-    }
+    });
 
-    if (history.length < 1) return;
-
-    var n = Math.max(history.length-1, 1);
-    function pt(i){
-      var x = pad + (w-2*pad) * (history.length===1 ? 1 : i/n);
-      var v = history[i]/100;
-      var y = h - pad - (h-2*pad)*v;
-      return [x,y];
-    }
-
-    // area fill
+    // vertical marker at the model's inflection point (n0)
+    var xN0 = xAt(MODEL.N0);
+    ctx.save();
+    ctx.setLineDash([3*dpr,3*dpr]);
+    ctx.strokeStyle = 'rgba(255,255,255,0.18)';
     ctx.beginPath();
-    var p0 = pt(0);
-    ctx.moveTo(p0[0], h-pad);
-    ctx.lineTo(p0[0], p0[1]);
-    for (var i=1;i<history.length;i++){
-      var p = pt(i);
-      ctx.lineTo(p[0], p[1]);
+    ctx.moveTo(xN0, padY);
+    ctx.lineTo(xN0, h-padY);
+    ctx.stroke();
+    ctx.restore();
+
+    // theoretical cumulative curve (full, static dashed backdrop)
+    ctx.save();
+    ctx.setLineDash([4*dpr,4*dpr]);
+    ctx.strokeStyle = 'rgba(200,200,214,0.55)';
+    ctx.lineWidth = 1.6*dpr;
+    ctx.beginPath();
+    for (var n=0; n<=MODEL.N; n++){
+      var x = xAt(n), y = yAt(THEORY_CUM[n]*100);
+      if (n===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
     }
-    var last = pt(history.length-1);
-    ctx.lineTo(last[0], h-pad);
+    ctx.stroke();
+    ctx.restore();
+
+    if (actualHistory.length < 2) return;
+
+    // actual line: area fill
+    var lastN = actualHistory.length - 1;
+    ctx.beginPath();
+    ctx.moveTo(xAt(0), h-padY);
+    for (var i=0;i<actualHistory.length;i++){
+      ctx.lineTo(xAt(i), yAt(actualHistory[i]));
+    }
+    ctx.lineTo(xAt(lastN), h-padY);
     ctx.closePath();
     var grad = ctx.createLinearGradient(0,0,0,h);
-    grad.addColorStop(0,'rgba(255,209,102,0.35)');
+    grad.addColorStop(0,'rgba(255,209,102,0.32)');
     grad.addColorStop(1,'rgba(255,138,61,0.02)');
     ctx.fillStyle = grad;
     ctx.fill();
 
-    // line
+    // actual line: stroke
     ctx.beginPath();
-    for (var j=0;j<history.length;j++){
-      var pj = pt(j);
-      if (j===0) ctx.moveTo(pj[0], pj[1]);
-      else ctx.lineTo(pj[0], pj[1]);
+    for (var j=0;j<actualHistory.length;j++){
+      var x2 = xAt(j), y2 = yAt(actualHistory[j]);
+      if (j===0) ctx.moveTo(x2,y2); else ctx.lineTo(x2,y2);
     }
     ctx.strokeStyle = '#ffd166';
-    ctx.lineWidth = 2.5*(window.devicePixelRatio||1);
+    ctx.lineWidth = 2.4*dpr;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
     ctx.shadowColor = 'rgba(255,160,60,0.6)';
-    ctx.shadowBlur = 8*(window.devicePixelRatio||1);
+    ctx.shadowBlur = 7*dpr;
     ctx.stroke();
     ctx.shadowBlur = 0;
 
     // last point dot
     ctx.beginPath();
-    ctx.arc(last[0], last[1], 3.5*(window.devicePixelRatio||1), 0, Math.PI*2);
+    ctx.arc(xAt(lastN), yAt(actualHistory[lastN]), 3.2*dpr, 0, Math.PI*2);
     ctx.fillStyle = '#fff3cf';
     ctx.fill();
   }
 
-  function spawnParticles(count){
+  function spawnParticles(n){
+    var count = n<=20 ? 10 : (n<=60 ? 6 : 4);
     for (var i=0;i<count;i++){
       var el = document.createElement('div');
       el.className = 'spark';
@@ -517,7 +691,7 @@
       var dist = 60 + Math.random()*90;
       var dx = Math.cos(angle)*dist;
       var dy = Math.sin(angle)*dist;
-      var dur = 0.6 + Math.random()*0.5;
+      var dur = 0.5 + Math.random()*0.4;
       el.style.setProperty('--dx', dx.toFixed(1)+'px');
       el.style.setProperty('--dy', dy.toFixed(1)+'px');
       el.style.setProperty('--sdur', dur.toFixed(2)+'s');
@@ -530,9 +704,11 @@
   }
 
   function reset(){
-    history = [0];
+    actualHistory = [0];
     loseCountEl.textContent = '0';
     winRateEl.textContent = '0%';
+    theoryRateEl.textContent = '0%';
+    trialNowEl.textContent = '0';
     streakLabel.textContent = '';
     bigText.className = '';
     bigText.textContent = '';
@@ -548,33 +724,37 @@
 
     var losses = 0, wins = 0;
     var curType = null, curStreak = 0;
-    var index = 0;
+    var n = 0;
 
     function step(){
-      if (index >= TOTAL){
+      if (n >= MODEL.N){
         playing = false;
         replayBtn.disabled = false;
         replayBtn.textContent = 'もう一度再生';
         return;
       }
 
-      var type = SEQUENCE[index];
-      if (type === curType){ curStreak++; } else { curType = type; curStreak = 1; }
+      n++;
+      var p = theoreticalP(n);
+      var isWin = Math.random() < p;
+      var type = isWin ? 'win' : 'lose';
 
+      if (type === curType){ curStreak++; } else { curType = type; curStreak = 1; }
       if (type === 'lose'){ losses++; } else { wins++; }
 
-      var total = losses + wins;
-      var rate = total > 0 ? (wins/total*100) : 0;
-      history.push(rate);
+      var actualRate = (wins/n)*100;
+      actualHistory.push(actualRate);
 
       loseCountEl.textContent = String(losses);
-      winRateEl.textContent = rate.toFixed(0) + '%';
+      winRateEl.textContent = actualRate.toFixed(0) + '%';
+      theoryRateEl.textContent = (THEORY_CUM[n]*100).toFixed(0) + '%';
+      trialNowEl.textContent = String(n);
       streakLabel.innerHTML = type === 'lose'
         ? '<span class="n">' + curStreak + '</span> 連敗中…'
-        : '<span class="n">' + curStreak + '</span> 連勝中！';
+        : '<span class="n">' + curStreak + '</span> 連勝中!';
 
-      var delay = delayFor(index);
-      var dur = Math.max(0.28, Math.min(0.85, delay/1000*0.95));
+      var delay = delayFor(n);
+      var dur = Math.max(0.16, Math.min(0.75, delay/1000*0.9));
 
       bigText.style.setProperty('animation-duration', dur.toFixed(2)+'s');
       bigText.className = type;
@@ -583,11 +763,10 @@
       bigText.className = type;
       bigText.textContent = type === 'lose' ? '負け' : '勝て';
 
-      if (type === 'win') spawnParticles(10);
+      if (type === 'win') spawnParticles(n);
 
       drawChart();
 
-      index++;
       timer = setTimeout(step, delay);
     }
 
